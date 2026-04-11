@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Checkout{% endblock %}
+{% block content %}
+<h1 class="section-title" style="font-size:1.75rem">Checkout</h1>
+
+<h2 class="section-title" style="font-size:1rem;color:var(--muted)">Order summary</h2>
+<ul class="order-items" style="margin-bottom:1.5rem;max-width:480px">
+  {% for row in items %}
+  <li>{{ row.product.name }} × {{ row.quantity }} — ${{ '%.2f'|format(row.line_cents / 100) }}</li>
+  {% endfor %}
+</ul>
+<p style="margin-bottom:1.5rem"><strong>Total: ${{ '%.2f'|format(subtotal_cents / 100) }}</strong></p>
+
+<form method="post" class="form-stack" style="max-width:480px">
+  {% if not current_user.is_authenticated %}
+  <label for="guest_email">Email (for order reference)</label>
+  <input type="email" id="guest_email" name="guest_email" required autocomplete="email">
+  {% endif %}
+
+  <label for="shipping_name">Full name</label>
+  <input type="text" id="shipping_name" name="shipping_name" required autocomplete="name">
+
+  <label for="shipping_address">Shipping address</label>
+  <textarea id="shipping_address" name="shipping_address" required autocomplete="street-address"></textarea>
+
+  <button type="submit" class="btn btn-primary">Place order</button>
+</form>
+<p class="meta" style="margin-top:1rem"><a href="{{ url_for('main.cart') }}">← Back to cart</a></p>
+{% endblock %}

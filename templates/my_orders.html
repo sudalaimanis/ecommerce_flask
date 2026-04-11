@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}My orders{% endblock %}
+{% block content %}
+<h1 class="section-title" style="font-size:1.75rem">My orders</h1>
+
+{% if not orders %}
+<p>You have not placed any orders yet.</p>
+{% else %}
+<ul class="order-items">
+  {% for o in orders %}
+  <li style="padding:1rem 0">
+    <strong><a href="{{ url_for('main.order_confirmation', order_id=o.id) }}">Order #{{ o.id }}</a></strong>
+    <span class="meta"> — {{ o.created_at.strftime('%Y-%m-%d') }} — ${{ '%.2f'|format(o.total_cents / 100) }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

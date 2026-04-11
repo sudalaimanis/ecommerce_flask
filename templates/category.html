@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ category.name }}{% endblock %}
+{% block content %}
+<h1 class="section-title" style="font-size:1.75rem">{{ category.name }}</h1>
+<p class="meta" style="margin-top:-0.5rem;margin-bottom:1.5rem">{{ products|length }} product{% if products|length != 1 %}s{% endif %}</p>
+
+<div class="product-grid">
+  {% for p in products %}
+  <article class="card">
+    <a href="{{ url_for('main.product_detail', slug=p.slug) }}" class="card-img-wrap">
+      {% if p.image_url %}
+      <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+      {% endif %}
+    </a>
+    <div class="card-body">
+      <h3><a href="{{ url_for('main.product_detail', slug=p.slug) }}">{{ p.name }}</a></h3>
+      <p>{{ p.description[:120] }}{% if p.description|length > 120 %}…{% endif %}</p>
+      <span class="price">${{ '%.2f'|format(p.price_cents / 100) }}</span>
+      {% if p.stock < 5 %}
+      <span class="meta" style="display:block;margin-top:0.35rem">Only {{ p.stock }} left</span>
+      {% endif %}
+    </div>
+  </article>
+  {% else %}
+  <p>No products in this category yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

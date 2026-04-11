@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Order #{{ order.id }}{% endblock %}
+{% block content %}
+<h1 class="section-title" style="font-size:1.75rem">Order confirmed</h1>
+<p>Thank you! Your order number is <strong>#{{ order.id }}</strong>.</p>
+<p class="meta">Placed on {{ order.created_at.strftime('%Y-%m-%d %H:%M') }} UTC</p>
+
+<h2 class="section-title" style="font-size:1rem;margin-top:1.5rem">Ship to</h2>
+<p style="margin:0">{{ order.shipping_name }}</p>
+<p style="margin:0.35rem 0 0;white-space:pre-wrap">{{ order.shipping_address }}</p>
+
+<h2 class="section-title" style="font-size:1rem">Items</h2>
+<ul class="order-items" style="max-width:480px">
+  {% for line in order.items %}
+  <li>
+    {{ line.product.name }} × {{ line.quantity }}
+    @ ${{ '%.2f'|format(line.unit_price_cents / 100) }}
+    = ${{ '%.2f'|format(line.quantity * line.unit_price_cents / 100) }}
+  </li>
+  {% endfor %}
+</ul>
+<p><strong>Total paid: ${{ '%.2f'|format(order.total_cents / 100) }}</strong></p>
+
+<p style="margin-top:1.5rem">
+  <a class="btn btn-primary" href="{{ url_for('main.index') }}">Continue shopping</a>
+</p>
+{% endblock %}
