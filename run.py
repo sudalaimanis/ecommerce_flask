@@ -1,11 +1,28 @@
-"""Entry point: run with `python run.py` from the ecommerce_flask directory."""
-from app import create_app, db
-from app.seed import seed_if_empty
 
-app = create_app()
+m flask import Flask, request, Response
+from prometheus_client import Counter, Histogram, generate_latest
 
-if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-        seed_if_empty()
-    app.run(debug=True, host="0.0.0.0", port=5000)
+app = Flask(__name__)
+
+# Metrics
+REQUEST_COUNT = Counter(
+            'http_requests_total',
+                'Total HTTP Requests',
+                    ['method', 'endpoint', 'status']
+                    )
+
+REQUEST_LATENCY = Histogram(
+            'http_request_duration_seconds',
+                'Request latency',
+                    ['endpoint']
+                    )
+
+@app.route('/')
+def home():
+        with REQUEST_LATENCY.labels(endpoint='/').time():
+                    REQUEST_COUNT.labels(method='GET', endpoint='/', status='200').inc()
+                            return "Hello World"
+
+                        @app.route('/metrics')
+                        def metrics():
+                                return Response(generate_latest(), mimetype='text/plain')
