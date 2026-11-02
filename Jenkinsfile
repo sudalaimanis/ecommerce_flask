@@ -2,11 +2,15 @@ pipeline {
     agent any
 
     environment {
+        // Images are named ${DOCKER_REPO}-<service>:<build number>, e.g. sudalaimmanis/flaskapp-web:12
         DOCKER_REPO      = 'sudalaimmanis/flaskapp'
         IMAGE_TAG        = "${BUILD_NUMBER}"
+        // Directory names under services/ -> image suffix (order_processing -> order-processing)
+        SERVICES         = 'web user customer product pricing inventory cart order payment order-processing logistics notification'
         // The exact IDs you saved in Jenkins Credentials Manager
-        DOCKER_HUB_CREDS = 'docker-hub-credentials' 
+        DOCKER_HUB_CREDS = 'docker-hub-credentials'
         GITHUB_CREDS     = 'github-credentials'
+        GITHUB_REPO      = 'github.com/sudalaimanis/ecommerce_flask.git'
     }
 
     stages {
@@ -16,62 +20,68 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies & Lint') {
+        stage('Install Dependencies & Syntax Check') {
             steps {
-                echo 'Setting up environment and testing dependencies...'
                 sh '''
                     python3 -m venv .venv
-                    source .venv/bin/activate
+                    . .venv/bin/activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
+                    python -m compileall -q services libs
                 '''
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Docker Images') {
             steps {
-                echo "Building Docker image: ${DOCKER_REPO}:${IMAGE_TAG}"
-                sh "docker build -t ${DOCKER_REPO}:${IMAGE_TAG} ."
+                sh '''
+                    for svc in $SERVICES; do
+                        dir=$(echo $svc | tr '-' '_')
+                        echo "Building $DOCKER_REPO-$svc:$IMAGE_TAG"
+                        docker build --build-arg SERVICE=$dir -t $DOCKER_REPO-$svc:$IMAGE_TAG .
+                    done
+                '''
             }
         }
 
         stage('Trivy Security Scan') {
             steps {
-                echo "Scanning image ${DOCKER_REPO}:${IMAGE_TAG} for vulnerabilities..."
-                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${DOCKER_REPO}:${IMAGE_TAG}"
+                sh '''
+                    for svc in $SERVICES; do
+                        trivy image --exit-code 1 --severity HIGH,CRITICAL $DOCKER_REPO-$svc:$IMAGE_TAG
+                    done
+                '''
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                echo 'Logging into Docker Hub and pushing image...'
-                // Securely binds Docker credentials to temporary environment variables
                 withCredentials([usernamePassword(credentialsId: "${DOCKER_HUB_CREDS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
-                    sh "docker push ${DOCKER_REPO}:${IMAGE_TAG}"
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        for svc in $SERVICES; do
+                            docker push $DOCKER_REPO-$svc:$IMAGE_TAG
+                        done
+                    '''
                 }
             }
         }
 
         stage('Update K8s Manifest & Push to GitHub') {
             steps {
-                echo 'Updating image tag in deployment.yaml...'
-                sh """
-                    sed -i 's|image: ${DOCKER_REPO}:.*|image: ${DOCKER_REPO}:${IMAGE_TAG}|g' k8s-files/deployment.yml
-                """
-                
-                echo 'Committing and pushing updated manifest back to GitHub...'
-                // Securely binds GitHub credentials to push the manifest change
+                sh '''
+                    for svc in $SERVICES; do
+                        sed -i "s|image: $DOCKER_REPO-$svc:.*|image: $DOCKER_REPO-$svc:$IMAGE_TAG|g" k8s-files/services.yml
+                    done
+                '''
                 withCredentials([usernamePassword(credentialsId: "${GITHUB_CREDS}", usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
                     sh '''
                         git config user.name "Jenkins CI"
                         git config user.email "jenkins@yourdomain.com"
-                        git add k8s-files/deployment.yaml
-                        git commit -m "Build #${BUILD_NUMBER}: Update image tag to ${IMAGE_TAG} [skip ci]"
-                        
-                        # Overrides the origin URL to authenticate via the GitHub Personal Access Token
-                        git remote set-url origin https://${GH_USER}:${GH_TOKEN}@://github.com
-                        git push origin main
+                        git add k8s-files/services.yml
+                        git commit -m "Build #${BUILD_NUMBER}: Update image tags to ${IMAGE_TAG} [skip ci]"
+                        git remote set-url origin https://${GH_USER}:${GH_TOKEN}@${GITHUB_REPO}
+                        git push origin HEAD:main
                     '''
                 }
             }
@@ -80,9 +90,12 @@ pipeline {
 
     post {
         always {
-            echo 'Cleaning up workspace...'
+            sh '''
+                for svc in $SERVICES; do
+                    docker rmi $DOCKER_REPO-$svc:$IMAGE_TAG || true
+                done
+            '''
             cleanWs()
-            sh "docker rmi ${DOCKER_REPO}:${IMAGE_TAG} || true"
         }
         success {
             echo 'Pipeline completed successfully!'

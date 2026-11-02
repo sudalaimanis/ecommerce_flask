@@ -1,0 +1,8 @@
+.venv
+.git
+**/__pycache__
+*.pyc
+instance
+*.db
+.DS_Store
+k8s-files

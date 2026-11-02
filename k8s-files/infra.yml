@@ -1,0 +1,110 @@
+# Shared infrastructure: secrets, Postgres (one DB per service) and Redis.
+# CHANGE the secret values below (or create the Secret out-of-band) before using outside a demo.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: shop-secrets
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: change-me
+  JWT_SECRET: change-me
+  SECRET_KEY: change-me
+  SMTP_USER: ""
+  SMTP_PASSWORD: ""
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+data:
+  init.sql: |
+    -- One database per service (database-per-service pattern).
+    CREATE DATABASE user_db;
+    CREATE DATABASE customer_db;
+    CREATE DATABASE product_db;
+    CREATE DATABASE pricing_db;
+    CREATE DATABASE inventory_db;
+    CREATE DATABASE cart_db;
+    CREATE DATABASE order_db;
+    CREATE DATABASE payment_db;
+    CREATE DATABASE processing_db;
+    CREATE DATABASE logistics_db;
+    CREATE DATABASE notification_db;
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: postgres}
+  template:
+    metadata:
+      labels: {app: postgres}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports: [{containerPort: 5432}]
+          env:
+            - {name: POSTGRES_USER, value: shop}
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: shop-secrets, key: POSTGRES_PASSWORD}}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          readinessProbe:
+            exec: {command: [pg_isready, -U, shop]}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+            - {name: init, mountPath: /docker-entrypoint-initdb.d}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: postgres-data}
+        - name: init
+          configMap: {name: postgres-init}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector: {app: postgres}
+  ports: [{port: 5432}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: redis}
+  template:
+    metadata:
+      labels: {app: redis}
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports: [{containerPort: 6379}]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector: {app: redis}
+  ports: [{port: 6379}]

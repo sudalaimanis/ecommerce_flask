@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}My profile{% endblock %}
+{% block content %}
+<h1 class="section-title" style="font-size:1.75rem">My profile</h1>
+<form method="post" class="form-stack" style="max-width:480px">
+  <label>Email</label>
+  <input type="email" value="{{ current_user.email }}" disabled>
+
+  <label for="name">Name</label>
+  <input type="text" id="name" name="name" value="{{ profile.name or current_user.name }}" required>
+
+  <label for="phone">Phone</label>
+  <input type="text" id="phone" name="phone" value="{{ profile.phone or '' }}">
+
+  <label for="shipping_name">Default shipping name</label>
+  <input type="text" id="shipping_name" name="shipping_name" value="{{ profile.shipping_name or '' }}">
+
+  <label for="shipping_address">Default shipping address</label>
+  <textarea id="shipping_address" name="shipping_address">{{ profile.shipping_address or '' }}</textarea>
+
+  <button type="submit" class="btn btn-primary">Save profile</button>
+</form>
+<p class="meta" style="margin-top:1rem">Saved by the customer service; used to prefill checkout.</p>
+{% endblock %}

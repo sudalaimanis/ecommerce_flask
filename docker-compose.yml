@@ -1,0 +1,121 @@
+# Local stack: docker compose up --build   ->  http://localhost:5000
+x-service: &service
+  restart: unless-stopped
+  depends_on:
+    postgres: {condition: service_healthy}
+    redis: {condition: service_started}
+  environment: &env
+    REDIS_URL: redis://redis:6379/0
+    JWT_SECRET: ${JWT_SECRET:-dev-change-me-in-production}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shop}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shop"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+
+  web:
+    <<: *service
+    build: {context: ., args: {SERVICE: web}}
+    ports: ["5000:5000"]
+    environment:
+      <<: *env
+      SECRET_KEY: ${SECRET_KEY:-dev-change-me-in-production}
+
+  user-service:
+    <<: *service
+    build: {context: ., args: {SERVICE: user}}
+    environment:
+      <<: *env
+      DATABASE_URL: postgresql+psycopg2://shop:${POSTGRES_PASSWORD:-shop}@postgres:5432/user_db
+
+  customer-service:
+    <<: *service
+    build: {context: ., args: {SERVICE: customer}}
+    environment:
+      <<: *env
+      DATABASE_URL: postgresql+psycopg2://shop:${POSTGRES_PASSWORD:-shop}@postgres:5432/customer_db
+
+  product-service:
+    <<: *service
+    build: {context: ., args: {SERVICE: product}}
+    environment:
+      <<: *env
+      DATABASE_URL: postgresql+psycopg2://shop:${POSTGRES_PASSWORD:-shop}@postgres:5432/product_db
+
+  pricing-service:
+    <<: *service
+    build: {context: ., args: {SERVICE: pricing}}
+    environment:
+      <<: *env
+      DATABASE_URL: postgresql+psycopg2://shop:${POSTGRES_PASSWORD:-shop}@postgres:5432/pricing_db
+
+  inventory-service:
+    <<: *service
+    build: {context: ., args: {SERVICE: inventory}}
+    environment:
+      <<: *env
+      DATABASE_URL: postgresql+psycopg2://shop:${POSTGRES_PASSWORD:-shop}@postgres:5432/inventory_db
+
+  cart-service:
+    <<: *service
+    build: {context: ., args: {SERVICE: cart}}
+    environment:
+      <<: *env
+      DATABASE_URL: postgresql+psycopg2://shop:${POSTGRES_PASSWORD:-shop}@postgres:5432/cart_db
+
+  order-service:
+    <<: *service
+    build: {context: ., args: {SERVICE: order}}
+    environment:
+      <<: *env
+      DATABASE_URL: postgresql+psycopg2://shop:${POSTGRES_PASSWORD:-shop}@postgres:5432/order_db
+
+  payment-service:
+    <<: *service
+    build: {context: ., args: {SERVICE: payment}}
+    environment:
+      <<: *env
+      DATABASE_URL: postgresql+psycopg2://shop:${POSTGRES_PASSWORD:-shop}@postgres:5432/payment_db
+
+  order-processing-service:
+    <<: *service
+    build: {context: ., args: {SERVICE: order_processing}}
+    environment:
+      <<: *env
+      DATABASE_URL: postgresql+psycopg2://shop:${POSTGRES_PASSWORD:-shop}@postgres:5432/processing_db
+
+  logistics-service:
+    <<: *service
+    build: {context: ., args: {SERVICE: logistics}}
+    environment:
+      <<: *env
+      DATABASE_URL: postgresql+psycopg2://shop:${POSTGRES_PASSWORD:-shop}@postgres:5432/logistics_db
+
+  notification-service:
+    <<: *service
+    build: {context: ., args: {SERVICE: notification}}
+    environment:
+      <<: *env
+      DATABASE_URL: postgresql+psycopg2://shop:${POSTGRES_PASSWORD:-shop}@postgres:5432/notification_db
+      # Email is optional: leave unset to only record notifications.
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+
+volumes:
+  pgdata:

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Order #{{ order.id }}{% endblock %}
+{% block content %}
+<h1 class="section-title" style="font-size:1.75rem">Order confirmed</h1>
+<p>Thank you! Your order number is <strong>#{{ order.id }}</strong>.</p>
+<p class="meta">Placed on {{ order.created_at.strftime('%Y-%m-%d %H:%M') }} UTC</p>
+
+<h2 class="section-title" style="font-size:1rem;margin-top:1.5rem">Ship to</h2>
+<p style="margin:0">{{ order.shipping_name }}</p>
+<p style="margin:0.35rem 0 0;white-space:pre-wrap">{{ order.shipping_address }}</p>
+
+<h2 class="section-title" style="font-size:1rem">Items</h2>
+<ul class="order-items" style="max-width:480px">
+  {% for line in order['items'] %}
+  <li>
+    {{ line.product.name }} × {{ line.quantity }}
+    @ ${{ '%.2f'|format(line.unit_price_cents / 100) }}
+    = ${{ '%.2f'|format(line.quantity * line.unit_price_cents / 100) }}
+  </li>
+  {% endfor %}
+</ul>
+<p><strong>Total paid: ${{ '%.2f'|format(order.total_cents / 100) }}</strong></p>
+
+<h2 class="section-title" style="font-size:1rem">Status</h2>
+<p style="margin:0">{{ order.status.replace('_', ' ').title() }}</p>
+{% if order.shipment %}
+<p class="meta" style="margin:0.35rem 0 0">
+  Shipped with {{ order.shipment.carrier }} — tracking
+  <strong>{{ order.shipment.tracking_number }}</strong>, estimated delivery {{ order.shipment.eta }}
+</p>
+{% endif %}
+
+{% if order.payments %}
+<h2 class="section-title" style="font-size:1rem;margin-top:1.5rem">Payment</h2>
+{% for p in order.payments %}
+<p style="margin:0">Payment #{{ p.id }} — ${{ '%.2f'|format(p.amount_cents / 100) }} — {{ p.status.title() }}</p>
+{% endfor %}
+{% endif %}
+
+{% if order.timeline %}
+<h2 class="section-title" style="font-size:1rem;margin-top:1.5rem">Order progress</h2>
+<ul class="order-items" style="max-width:480px">
+  {% for t in order.timeline %}
+  <li>{{ t.step.replace('_', ' ').title() }} <span class="meta">— {{ t.at[:19].replace('T', ' ') }} UTC</span></li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if order.notifications %}
+<h2 class="section-title" style="font-size:1rem;margin-top:1.5rem">Emails</h2>
+<ul class="order-items" style="max-width:480px">
+  {% for n in order.notifications %}
+  <li>{{ n.subject }} <span class="meta">— {{ n.status }}</span></li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<p style="margin-top:1.5rem">
+  <a class="btn btn-primary" href="{{ url_for('main.index') }}">Continue shopping</a>
+</p>
+{% endblock %}

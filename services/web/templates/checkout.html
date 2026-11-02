@@ -18,10 +18,10 @@
   {% endif %}
 
   <label for="shipping_name">Full name</label>
-  <input type="text" id="shipping_name" name="shipping_name" required autocomplete="name">
+  <input type="text" id="shipping_name" name="shipping_name" required autocomplete="name" value="{{ profile.shipping_name or '' }}">
 
   <label for="shipping_address">Shipping address</label>
-  <textarea id="shipping_address" name="shipping_address" required autocomplete="street-address"></textarea>
+  <textarea id="shipping_address" name="shipping_address" required autocomplete="street-address">{{ profile.shipping_address or '' }}</textarea>
 
   <button type="submit" class="btn btn-primary">Place order</button>
 </form>

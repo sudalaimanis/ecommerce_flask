@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h1 class="section-title" style="font-size:1.75rem">{{ title }}</h1>
+<p style="margin-bottom:1.25rem">
+  {% for key, label in [('services','Services'),('inventory','Inventory'),('pricing','Pricing'),
+                        ('payments','Payments'),('shipments','Shipments'),('notifications','Notifications')] %}
+  <a class="btn {{ 'btn-primary' if section == key else 'btn-ghost' }}"
+     href="{{ url_for('main.admin' if key == 'services' else 'main.admin_' ~ key) }}">{{ label }}</a>
+  {% endfor %}
+</p>
+{% if not rows %}
+<p>No data yet.</p>
+{% else %}
+<table class="cart-table">
+  <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      {% for cell in row %}
+      <td>{% if health and loop.last %}<strong style="color:{{ 'green' if cell == 'UP' else 'crimson' }}">{{ cell }}</strong>{% else %}{{ cell }}{% endif %}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

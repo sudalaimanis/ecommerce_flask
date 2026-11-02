@@ -1,5 +1,5 @@
 
-m flask import Flask, request, Response
+flask import Flask, request, Response
 from prometheus_client import Counter, Histogram, generate_latest
 
 app = Flask(__name__)
