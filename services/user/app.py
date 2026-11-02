@@ -52,6 +52,13 @@ def login():
     return _auth_response(user)
 
 
+@app.get("/users")
+def list_users():
+    """Internal: id, email, name and signup date only - never password hashes."""
+    users = User.query.order_by(User.id).all()
+    return jsonify(count=len(users), users=[{**u.public(), "created_at": u.created_at.isoformat()} for u in users])
+
+
 @app.get("/me")
 def me():
     claims = decode_token(request.headers.get("Authorization", "").removeprefix("Bearer ").strip())

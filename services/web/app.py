@@ -313,6 +313,14 @@ def admin():
                            rows=health, health=True)
 
 
+@bp.route("/admin/users")
+@admin_required
+def admin_users():
+    data = _safe("user", "/users", {"count": 0, "users": []})
+    rows = [(u["id"], u["name"], u["email"], u["created_at"][:19].replace("T", " ")) for u in data["users"]]
+    return _admin_page("users", f"Users ({data['count']} total)", ["ID", "Name", "Email", "Registered (UTC)"], rows)
+
+
 @bp.route("/admin/inventory")
 @admin_required
 def admin_inventory():
